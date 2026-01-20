@@ -63,11 +63,6 @@ token_info = {
             "cost_basis": 840,
             "quantity": 2.489
         },
-        "hyperliquid": {
-            "symbol": "vntl:SPACEX",
-            "cost_basis": 500,
-            "quantity": .0001
-        },
         "jupiter": {
             "symbol": "PreANxuXjsy2pvisWWMNB6YaJNzr7681wJJr2rHsfTh",
             "cost_basis": 335.07,
@@ -118,32 +113,6 @@ def get_jupiter_token_price(input_mint: str):
     return data.get("inUsdValue")
 
 
-def get_hyperliquid_token_price(coin: str) -> float | None:
-    coin = token_info["exchange_holdings"]["hyperliquid"]["symbol"]
-    now = int(time.time() * 1000)
-    start = now - 60 * 60 * 1000
-
-    url = "https://api-ui.hyperliquid.xyz/info"
-    payload = {
-        "type": "candleSnapshot",
-        "req": {
-            "coin": coin,
-            "interval": "1m",
-            "startTime": start,
-            "endTime": now
-        }
-    }
-
-    try:
-        resp = requests.post(url, json=payload, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        if not data:
-            return None
-        return float(data[-1].get("c"))
-    except (requests.RequestException, ValueError, IndexError):
-        return None
-
 def calculate_p_l(exchange: str, current_price: float) -> dict | None:
     holdings = token_info["exchange_holdings"].get(exchange)
     purchase_price = holdings["cost_basis"]
@@ -153,16 +122,14 @@ def calculate_p_l(exchange: str, current_price: float) -> dict | None:
     return {"pnl": pnl, "pnl_percent": pnl_percent, "buy_price": purchase_price}
 
 def get_portfolio_summary():
-    hyperliquid_price = get_hyperliquid_token_price(None)
     jarsy_price = get_jarsy_token_price(None)
     jupiter_price = get_jupiter_token_price(None)
 
-    hyperliquid_pnl = calculate_p_l("hyperliquid", hyperliquid_price)
     jarsy_pnl = calculate_p_l("jarsy", jarsy_price)
     jupiter_pnl = calculate_p_l("jupiter", jupiter_price)
 
     # Calculate totals
-    total_pnl = hyperliquid_pnl["pnl"] + jarsy_pnl["pnl"] + jupiter_pnl["pnl"]
+    total_pnl = jarsy_pnl["pnl"] + jupiter_pnl["pnl"]
     
     # Total invested = sum of (buy_price * quantity) for each exchange
     holdings = token_info["exchange_holdings"]
@@ -173,21 +140,12 @@ def get_portfolio_summary():
     
     # Total portfolio value = sum of (current_price * quantity) for each exchange
     total_portfolio_value = 0
-    if hyperliquid_price:
-        total_portfolio_value += hyperliquid_price * holdings["hyperliquid"]["quantity"]
     if jarsy_price:
         total_portfolio_value += jarsy_price * holdings["jarsy"]["quantity"]
     if jupiter_price:
         total_portfolio_value += jupiter_price * holdings["jupiter"]["quantity"]
 
     return {
-        "hyperliquid": {
-            "pnl": hyperliquid_pnl["pnl"],
-            "pnl_percent": hyperliquid_pnl["pnl_percent"],
-            "buy_price": hyperliquid_pnl["buy_price"],
-            "current_price": hyperliquid_price,
-            "position_value": hyperliquid_price * holdings["hyperliquid"]["quantity"] if hyperliquid_price else None
-        },
         "jarsy": {
             "pnl": jarsy_pnl["pnl"],
             "pnl_percent": jarsy_pnl["pnl_percent"],
