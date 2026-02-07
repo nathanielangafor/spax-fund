@@ -1,0 +1,12 @@
+[project]
+name = "spax-fund"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn>=0.24.0",
+    "requests>=2.31.0",
+    "cloudscraper>=1.2.71",
+    "google-auth>=2.28.0",
+    "google-api-python-client>=2.114.0",
+]
