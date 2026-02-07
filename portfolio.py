@@ -38,6 +38,7 @@ token_info = {
 # ──────────────────────────────────────────────
 #  FastAPI app
 # ──────────────────────────────────────────────
+print("starting app!")
 app = FastAPI(title="SpaceX Portfolio Tracker")
 
 app.add_middleware(
