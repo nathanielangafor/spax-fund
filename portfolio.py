@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 import requests
 import cloudscraper
 from fastapi import FastAPI, HTTPException, Request
@@ -196,13 +197,35 @@ def update_video_title(new_title: str):
 
 
 # ──────────────────────────────────────────────
+#  In-memory cache (survives while the function instance is warm)
+# ──────────────────────────────────────────────
+CACHE_TTL = 900  # 15 minutes
+_portfolio_cache = {"data": None, "timestamp": 0}
+_cache_lock = threading.Lock()
+
+
+def get_cached_portfolio() -> dict:
+    """Return cached portfolio data, refreshing if older than CACHE_TTL."""
+    now = time.time()
+    with _cache_lock:
+        if _portfolio_cache["data"] and (now - _portfolio_cache["timestamp"]) < CACHE_TTL:
+            return _portfolio_cache["data"]
+    # Fetch fresh data outside the lock
+    fresh = get_portfolio_summary()
+    with _cache_lock:
+        _portfolio_cache["data"] = fresh
+        _portfolio_cache["timestamp"] = time.time()
+    return fresh
+
+
+# ──────────────────────────────────────────────
 #  Routes
 # ──────────────────────────────────────────────
 @app.get("/api/portfolio")
 def api_portfolio():
-    """Get portfolio summary with P&L for all exchanges."""
+    """Get portfolio summary with P&L for all exchanges (cached for 15 min)."""
     try:
-        return get_portfolio_summary()
+        return get_cached_portfolio()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
